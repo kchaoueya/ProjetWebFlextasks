@@ -4,18 +4,18 @@ export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('flextasks_user');
+    const storedUser = localStorage.getItem('FlexTasks_user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
   const login = useCallback((userData) => {
     setUser(userData);
-    localStorage.setItem('flextasks_user', JSON.stringify(userData));
+    localStorage.setItem('FlexTasks_user', JSON.stringify(userData));
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('flextasks_user');
+    localStorage.removeItem('FlexTasks_user');
   }, []);
 
   const value = {

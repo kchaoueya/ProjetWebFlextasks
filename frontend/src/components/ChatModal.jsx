@@ -8,7 +8,7 @@ export default function ChatModal({ task, currentUser, otherUser, onClose }) {
 
   useEffect(() => {
     // Load messages for this task
-    const storedMessages = JSON.parse(localStorage.getItem('flextasks_messages') || '[]');
+    const storedMessages = JSON.parse(localStorage.getItem('FlexTasks_messages') || '[]');
     const taskMessages = storedMessages.filter(m => m.taskId === task.id);
     setMessages(taskMessages);
   }, [task.id]);
@@ -33,9 +33,9 @@ export default function ChatModal({ task, currentUser, otherUser, onClose }) {
     };
 
     // Save message to localStorage
-    const storedMessages = JSON.parse(localStorage.getItem('flextasks_messages') || '[]');
+    const storedMessages = JSON.parse(localStorage.getItem('FlexTasks_messages') || '[]');
     storedMessages.push(message);
-    localStorage.setItem('flextasks_messages', JSON.stringify(storedMessages));
+    localStorage.setItem('FlexTasks_messages', JSON.stringify(storedMessages));
 
     setMessages([...messages, message]);
     setNewMessage('');

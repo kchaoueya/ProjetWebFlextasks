@@ -32,7 +32,7 @@ This document summarizes all the changes made to the FlexTasks application to me
 - Implemented middleware for password hashing and rating calculations
 
 **Database Configuration:**
-- Connection string: `mongodb://localhost:27017/flextasks`
+- Connection string: `mongodb://localhost:27017/FlexTasks`
 - Proper error handling in `backend/config/db.js`
 - Environment variable support for different environments
 

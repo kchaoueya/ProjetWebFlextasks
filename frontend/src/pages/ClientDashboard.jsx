@@ -43,11 +43,11 @@ export default function ClientDashboard() {
 
   const loadData = useCallback(() => {
     // Load tasks posted by this client
-    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
     setMyTasks(storedTasks.filter(t => t.clientId === user?.id));
     
     // Load applications for tasks
-    const storedApplications = JSON.parse(localStorage.getItem('flextasks_applications') || '[]');
+    const storedApplications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
     setApplications(storedApplications);
   }, [user?.id]);
 
@@ -92,9 +92,9 @@ export default function ClientDashboard() {
       createdAt: new Date().toISOString(),
     };
 
-    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
     storedTasks.push(newTask);
-    localStorage.setItem('flextasks_tasks', JSON.stringify(storedTasks));
+    localStorage.setItem('FlexTasks_tasks', JSON.stringify(storedTasks));
 
     // Reset form
     setTitle('');
@@ -120,7 +120,7 @@ export default function ClientDashboard() {
     // Find the assigned student
     const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
     if (acceptedApp) {
-      const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+      const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
       const student = storedUsers.find(u => u.id === acceptedApp.studentId);
       if (student) {
         setChatTask(task);
@@ -133,20 +133,20 @@ export default function ClientDashboard() {
 
   const handleCompleteTask = (task) => {
     // Mark task as completed
-    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
     const updatedTasks = storedTasks.map(t => {
       if (t.id === task.id) {
         return { ...t, status: 'completed' };
       }
       return t;
     });
-    localStorage.setItem('flextasks_tasks', JSON.stringify(updatedTasks));
+    localStorage.setItem('FlexTasks_tasks', JSON.stringify(updatedTasks));
     loadData();
 
     // Open rating modal
     const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
     if (acceptedApp) {
-      const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+      const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
       const student = storedUsers.find(u => u.id === acceptedApp.studentId);
       if (student) {
         setRatingTask(task);
@@ -175,22 +175,22 @@ export default function ClientDashboard() {
       return a;
     });
     
-    const allApplications = JSON.parse(localStorage.getItem('flextasks_applications') || '[]');
+    const allApplications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
     const newApplications = allApplications.map(a => {
       const updated = updatedApplications.find(u => u.id === a.id);
       return updated || a;
     });
-    localStorage.setItem('flextasks_applications', JSON.stringify(newApplications));
+    localStorage.setItem('FlexTasks_applications', JSON.stringify(newApplications));
 
     // Update task status
-    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
     const updatedTasks = storedTasks.map(t => {
       if (t.id === taskId) {
         return { ...t, status: 'assigned' };
       }
       return t;
     });
-    localStorage.setItem('flextasks_tasks', JSON.stringify(updatedTasks));
+    localStorage.setItem('FlexTasks_tasks', JSON.stringify(updatedTasks));
     
     loadData();
   };

@@ -8,12 +8,12 @@ export default function UserProfile({ userId, onClose }) {
 
   useEffect(() => {
     // Load user data
-    const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
     const foundUser = storedUsers.find(u => u.id === userId);
     setUser(foundUser);
 
     // Load ratings for this user
-    const storedRatings = JSON.parse(localStorage.getItem('flextasks_ratings') || '[]');
+    const storedRatings = JSON.parse(localStorage.getItem('FlexTasks_ratings') || '[]');
     const userRatings = storedRatings.filter(r => r.ratedUserId === userId);
     setRatings(userRatings);
     

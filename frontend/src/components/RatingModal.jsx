@@ -33,9 +33,9 @@ export default function RatingModal({ task, ratedUser, ratedBy, onSubmit, onClos
     };
 
     // Save rating to localStorage
-    const storedRatings = JSON.parse(localStorage.getItem('flextasks_ratings') || '[]');
+    const storedRatings = JSON.parse(localStorage.getItem('FlexTasks_ratings') || '[]');
     storedRatings.push(rating);
-    localStorage.setItem('flextasks_ratings', JSON.stringify(storedRatings));
+    localStorage.setItem('FlexTasks_ratings', JSON.stringify(storedRatings));
 
     onSubmit(rating);
   };

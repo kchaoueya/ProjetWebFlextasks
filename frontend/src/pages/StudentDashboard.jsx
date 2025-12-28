@@ -33,18 +33,18 @@ export default function StudentDashboard() {
       return;
     }
     // Load tasks from localStorage
-    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
     setTasks(storedTasks.filter(t => t.status === 'open'));
     
     // Load applied tasks
-    const applied = JSON.parse(localStorage.getItem('flextasks_applications') || '[]');
+    const applied = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
     const myApps = applied.filter(a => a.studentId === user?.id);
     setMyApplications(myApps);
     setAppliedTasks(myApps.map(a => a.taskId));
   }, [isStudent, navigate, user?.id]);
 
   const handleApply = (taskId) => {
-    const applications = JSON.parse(localStorage.getItem('flextasks_applications') || '[]');
+    const applications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
     const newApplication = {
       id: crypto.randomUUID(),
       taskId,
@@ -54,7 +54,7 @@ export default function StudentDashboard() {
       status: 'pending',
     };
     applications.push(newApplication);
-    localStorage.setItem('flextasks_applications', JSON.stringify(applications));
+    localStorage.setItem('FlexTasks_applications', JSON.stringify(applications));
     setAppliedTasks([...appliedTasks, taskId]);
   };
 
@@ -65,7 +65,7 @@ export default function StudentDashboard() {
 
   const handleOpenChat = (task) => {
     // Find the client
-    const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
     const client = storedUsers.find(u => u.id === task.clientId);
     if (client) {
       setChatTask(task);
@@ -122,7 +122,7 @@ export default function StudentDashboard() {
             <h2 style={styles.sectionTitle}>My Applications ({myApplications.length})</h2>
             <div style={styles.applicationsGrid}>
               {myApplications.map(app => {
-                const task = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]')
+                const task = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]')
                   .find(t => t.id === app.taskId);
                 if (!task) return null;
                 

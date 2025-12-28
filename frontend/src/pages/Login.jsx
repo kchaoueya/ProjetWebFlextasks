@@ -19,7 +19,7 @@ export default function Login() {
     }
 
     // Simulated login - in production, this would call the backend API
-    const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
     const user = storedUsers.find(u => u.email === email && u.password === password);
 
     if (user) {

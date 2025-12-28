@@ -9,7 +9,7 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/flextasks');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/users');
     console.log('MongoDB Connected for seeding...');
   } catch (error) {
     console.error('Connection error:', error.message);
@@ -111,6 +111,7 @@ const seedDatabase = async () => {
       budget: 150,
       estimatedDuration: 4,
       scheduledDate: new Date('2025-12-25'),
+      scheduledTime: '10:00',
       completedDate: new Date('2025-12-25')
     });
     console.log('Created task:', task1.title);
@@ -130,6 +131,7 @@ const seedDatabase = async () => {
       budget: 50,
       estimatedDuration: 1,
       scheduledDate: new Date('2025-12-28'),
+      scheduledTime: '14:00',
       applicants: [
         {
           student: student2._id,
@@ -152,6 +154,8 @@ const seedDatabase = async () => {
       },
       budget: 30,
       estimatedDuration: 2,
+      scheduledDate: new Date('2025-12-30'),
+      scheduledTime: '16:00',
       applicants: [
         {
           student: student2._id,
@@ -190,6 +194,7 @@ const seedDatabase = async () => {
       rating: 5,
       comment: 'Excellent work! Very professional and thorough.',
       punctuality: 5,
+      professionalism: 5,
       quality: 5,
       communication: 5
     });

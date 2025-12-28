@@ -78,7 +78,7 @@ FlexTasks is a platform that connects students with local job opportunities, all
    - Update the `.env` file with your values:
      ```
      PORT=5000
-     MONGODB_URI=mongodb://localhost:27017/flextasks
+     MONGODB_URI=mongodb://localhost:27017/FlexTasks
      JWT_SECRET=your-secret-key-change-this-in-production
      SESSION_SECRET=your-session-secret-change-this-in-production
      GOOGLE_CLIENT_ID=your-google-client-id-here
@@ -129,7 +129,7 @@ The application uses MongoDB. You can either:
 1. **Use local MongoDB:**
    - Install MongoDB on your machine
    - Start MongoDB service
-   - The default connection string is `mongodb://localhost:27017/flextasks`
+   - The default connection string is `mongodb://localhost:27017/FlexTasks`
 
 2. **Use MongoDB Atlas (Cloud):**
    - Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)

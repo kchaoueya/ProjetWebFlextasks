@@ -32,7 +32,7 @@ export default function Signup() {
     }
 
     // Simulated signup - in production, this would call the backend API
-    const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
     
     if (storedUsers.some(u => u.email === email)) {
       setError('An account with this email already exists');
@@ -50,7 +50,7 @@ export default function Signup() {
     };
 
     storedUsers.push(newUser);
-    localStorage.setItem('flextasks_users', JSON.stringify(storedUsers));
+    localStorage.setItem('FlexTasks_users', JSON.stringify(storedUsers));
 
     // Auto-login after signup
     login({ id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role });

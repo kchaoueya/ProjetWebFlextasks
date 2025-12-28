@@ -97,7 +97,7 @@ Stores ratings and reviews.
 Add these to your `.env` file:
 ```
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/flextasks
+MONGODB_URI=mongodb://localhost:27017/FlexTasks
 JWT_SECRET=your-secret-key-change-this-in-production
 ```
 

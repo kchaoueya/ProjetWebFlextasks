@@ -16,7 +16,7 @@ export default function AuthCallback() {
 
     if (token && userId && role && name && email) {
       // Store the token
-      localStorage.setItem('flextasks_token', token);
+      localStorage.setItem('FlexTasks_token', token);
       
       // Login the user
       login({

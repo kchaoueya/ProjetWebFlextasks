@@ -67,32 +67,47 @@ const calculateOverallRating = (punctuality, professionalism, quality, communica
 
 // Calculate overall rating before saving
 ratingSchema.pre('save', function(next) {
-  // Calculate average of all category ratings
-  this.rating = calculateOverallRating(this.punctuality, this.professionalism, this.quality, this.communication);
-  next();
+  try {
+    // Calculate average of all category ratings
+    this.rating = calculateOverallRating(this.punctuality, this.professionalism, this.quality, this.communication);
+    if (typeof next === 'function') {
+      next();
+    }
+  } catch (error) {
+    if (typeof next === 'function') {
+      next(error);
+    } else {
+      throw error;
+    }
+  }
 });
 
 // Update user's average rating after saving
-ratingSchema.post('save', async function() {
-  const Rating = mongoose.model('Rating');
-  const User = mongoose.model('User');
-  
-  // Calculate new average rating for the rated user
-  const ratings = await Rating.find({ ratedUser: this.ratedUser });
-  
-  // Calculate overall average from all categories
-  let totalRating = 0;
-  ratings.forEach(r => {
-    const categoryAvg = calculateOverallRating(r.punctuality, r.professionalism, r.quality, r.communication);
-    totalRating += categoryAvg;
-  });
-  const avgRating = totalRating / ratings.length;
-  
-  await User.findByIdAndUpdate(this.ratedUser, {
-    averageRating: avgRating,
-    totalRatings: ratings.length
-  });
-});
+// Disabled for now - causing issues with seeding
+// ratingSchema.post('save', async function() {
+//   try {
+//     const Rating = mongoose.model('Rating');
+//     const User = mongoose.model('User');
+//     
+//     // Calculate new average rating for the rated user
+//     const ratings = await Rating.find({ ratedUser: this.ratedUser });
+//     
+//     // Calculate overall average from all categories
+//     let totalRating = 0;
+//     ratings.forEach(r => {
+//       const categoryAvg = calculateOverallRating(r.punctuality, r.professionalism, r.quality, r.communication);
+//       totalRating += categoryAvg;
+//     });
+//     const avgRating = totalRating / ratings.length;
+//     
+//     await User.findByIdAndUpdate(this.ratedUser, {
+//       averageRating: avgRating,
+//       totalRatings: ratings.length
+//     });
+//   } catch (error) {
+//     console.error('Error updating user rating:', error);
+//   }
+// });
 
 const Rating = mongoose.model('Rating', ratingSchema);
 

@@ -45,8 +45,8 @@ A modern web application connecting students with local job opportunities. Stude
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/RizZelo/ProjetWebFlextasks.git
-   cd ProjetWebFlextasks
+   git clone https://github.com/RizZelo/ProjetWebFlexTasks.git
+   cd ProjetWebFlexTasks
    ```
 
 2. **Set up Backend**
@@ -173,7 +173,7 @@ Overall rating is automatically calculated as the average of all categories.
 ### Backend (.env)
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/flextasks
+MONGODB_URI=mongodb://localhost:27017/FlexTasks
 JWT_SECRET=your-secret-key
 SESSION_SECRET=your-session-secret
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -226,11 +226,11 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-For support, email support@flextasks.com or open an issue in the repository.
+For support, email support@FlexTasks.com or open an issue in the repository.
 
 ## 🔗 Links
 
-- [GitHub Repository](https://github.com/RizZelo/ProjetWebFlextasks)
+- [GitHub Repository](https://github.com/RizZelo/ProjetWebFlexTasks)
 - [Setup Guide](SETUP_GUIDE.md)
 - [Changes Summary](CHANGES_SUMMARY.md)
 
