@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import UserProfile from '../components/UserProfile';
 
 const TASK_CATEGORIES = [
   { id: 'cleaning', name: 'Cleaning', icon: '🧹' },
@@ -19,6 +20,7 @@ export default function ClientDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [myTasks, setMyTasks] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -27,7 +29,10 @@ export default function ClientDashboard() {
   const [price, setPrice] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [duration, setDuration] = useState('');
   const [error, setError] = useState('');
 
   const loadData = useCallback(() => {
@@ -52,8 +57,8 @@ export default function ClientDashboard() {
     e.preventDefault();
     setError('');
 
-    if (!title || !description || !category || !price || !date || !time || !location) {
-      setError('Please fill in all fields');
+    if (!title || !description || !category || !price || !date || !time || !address || !city || !zipCode) {
+      setError('Please fill in all required fields');
       return;
     }
 
@@ -65,7 +70,12 @@ export default function ClientDashboard() {
       price: parseFloat(price),
       date,
       time,
-      location,
+      location: {
+        address,
+        city,
+        zipCode
+      },
+      duration: duration ? parseFloat(duration) : null,
       clientId: user.id,
       clientName: user.name,
       status: 'open',
@@ -83,7 +93,10 @@ export default function ClientDashboard() {
     setPrice('');
     setDate('');
     setTime('');
-    setLocation('');
+    setAddress('');
+    setCity('');
+    setZipCode('');
+    setDuration('');
     setShowForm(false);
     loadData();
   };
@@ -225,7 +238,22 @@ export default function ClientDashboard() {
                     />
                   </div>
                   <div style={styles.inputGroup}>
-                    <label style={styles.label}>Date</label>
+                    <label style={styles.label}>Duration (hours)</label>
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      style={styles.input}
+                      placeholder="2"
+                      min="0.5"
+                      step="0.5"
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Date *</label>
                     <input
                       type="date"
                       value={date}
@@ -234,7 +262,7 @@ export default function ClientDashboard() {
                     />
                   </div>
                   <div style={styles.inputGroup}>
-                    <label style={styles.label}>Time</label>
+                    <label style={styles.label}>Time *</label>
                     <input
                       type="time"
                       value={time}
@@ -245,14 +273,37 @@ export default function ClientDashboard() {
                 </div>
 
                 <div style={styles.inputGroup}>
-                  <label style={styles.label}>Location</label>
+                  <label style={styles.label}>Address *</label>
                   <input
                     type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     style={styles.input}
-                    placeholder="e.g., 123 Main St, Downtown"
+                    placeholder="e.g., 123 Main Street"
                   />
+                </div>
+
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>City *</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      style={styles.input}
+                      placeholder="e.g., Boston"
+                    />
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>ZIP Code *</label>
+                    <input
+                      type="text"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                      style={styles.input}
+                      placeholder="02101"
+                    />
+                  </div>
                 </div>
 
                 <div style={styles.formButtons}>
@@ -301,7 +352,8 @@ export default function ClientDashboard() {
                     <p style={styles.taskDescription}>{task.description}</p>
                     <div style={styles.taskDetails}>
                       <span>💰 ${task.price}</span>
-                      <span>📍 {task.location}</span>
+                      {task.duration && <span>⏱️ {task.duration}h</span>}
+                      <span>📍 {task.location?.address || task.location}, {task.location?.city || ''}</span>
                       <span>📅 {formatDate(task.date)}</span>
                       <span>⏰ {task.time}</span>
                     </div>
@@ -314,7 +366,12 @@ export default function ClientDashboard() {
                         {taskApplications.map(app => (
                           <div key={app.id} style={styles.applicationCard}>
                             <div style={styles.applicationInfo}>
-                              <span style={styles.applicantName}>🎓 {app.studentName}</span>
+                              <span 
+                                style={styles.applicantName}
+                                onClick={() => setSelectedUserId(app.studentId)}
+                              >
+                                🎓 {app.studentName}
+                              </span>
                               <span style={styles.applicationDate}>
                                 Applied {formatDate(app.appliedAt)}
                               </span>
@@ -345,6 +402,14 @@ export default function ClientDashboard() {
           )}
         </section>
       </main>
+
+      {/* User Profile Modal */}
+      {selectedUserId && (
+        <UserProfile 
+          userId={selectedUserId} 
+          onClose={() => setSelectedUserId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -633,6 +698,8 @@ const styles = {
   applicantName: {
     fontWeight: '500',
     color: '#333',
+    cursor: 'pointer',
+    textDecoration: 'underline',
   },
   applicationDate: {
     fontSize: '12px',
