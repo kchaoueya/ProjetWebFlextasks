@@ -9,7 +9,7 @@ export default function RatingModal({ task, ratedUser, ratedBy, onSubmit, onClos
   const [comment, setComment] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -18,26 +18,41 @@ export default function RatingModal({ task, ratedUser, ratedBy, onSubmit, onClos
       return;
     }
 
-    const rating = {
-      id: crypto.randomUUID(),
-      taskId: task.id,
-      ratedUserId: ratedUser.id,
-      ratedByUserId: ratedBy.id,
-      raterName: ratedBy.name,
-      punctuality,
-      professionalism,
-      quality,
-      communication,
-      comment,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save rating to localStorage
-    const storedRatings = JSON.parse(localStorage.getItem('FlexTasks_ratings') || '[]');
-    storedRatings.push(rating);
-    localStorage.setItem('FlexTasks_ratings', JSON.stringify(storedRatings));
-
-    onSubmit(rating);
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const overallRating = (punctuality + professionalism + quality + communication) / 4;
+      
+      const response = await fetch(`${backendUrl}/api/ratings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          taskId: task._id,
+          ratedUser: ratedUser._id || ratedUser.id,
+          rating: overallRating,
+          punctuality,
+          professionalism,
+          quality,
+          communication,
+          comment
+        })
+      });
+      
+      if (response.ok) {
+        const rating = await response.json();
+        onSubmit(rating);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to submit rating');
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      setError('An error occurred while submitting the rating');
+    }
   };
 
   const renderStarSelector = (value, setValue, label) => {

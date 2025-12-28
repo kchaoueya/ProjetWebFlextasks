@@ -1,5 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
+import Task from '../models/Task.js';
+import Rating from '../models/Rating.js';
 import { generateToken } from '../middleware/auth.js';
 import passport from '../config/passport.js';
 
@@ -101,7 +103,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get user profile
+// Get user profile with completed tasks and ratings
 router.get('/profile/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
@@ -110,7 +112,40 @@ router.get('/profile/:id', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(user);
+    // Get completed tasks
+    let completedTasks = [];
+    if (user.role === 'student') {
+      completedTasks = await Task.find({ 
+        student: req.params.id, 
+        status: 'completed' 
+      })
+        .populate('client', 'name')
+        .select('title category completedDate')
+        .sort({ completedDate: -1 })
+        .limit(10);
+    } else if (user.role === 'client') {
+      completedTasks = await Task.find({ 
+        client: req.params.id, 
+        status: 'completed' 
+      })
+        .populate('student', 'name')
+        .select('title category completedDate')
+        .sort({ completedDate: -1 })
+        .limit(10);
+    }
+
+    // Get ratings received
+    const ratings = await Rating.find({ ratedUser: req.params.id })
+      .populate('ratedBy', 'name')
+      .populate('task', 'title category')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      ...user.toObject(),
+      completedTasks,
+      ratings
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

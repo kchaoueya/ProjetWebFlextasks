@@ -41,14 +41,43 @@ export default function ClientDashboard() {
   const [duration, setDuration] = useState('');
   const [error, setError] = useState('');
 
-  const loadData = useCallback(() => {
-    // Load tasks posted by this client
-    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
-    setMyTasks(storedTasks.filter(t => t.clientId === user?.id));
-    
-    // Load applications for tasks
-    const storedApplications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
-    setApplications(storedApplications);
+  const loadData = useCallback(async () => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      // Load tasks posted by this client
+      const tasksResponse = await fetch(`${backendUrl}/api/tasks?clientId=${user?.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (tasksResponse.ok) {
+        const tasks = await tasksResponse.json();
+        setMyTasks(tasks);
+        
+        // Extract applications from tasks
+        const allApps = [];
+        tasks.forEach(task => {
+          if (task.applicants && task.applicants.length > 0) {
+            task.applicants.forEach(app => {
+              allApps.push({
+                id: app._id,
+                taskId: task._id,
+                studentId: app.student._id || app.student,
+                studentName: app.student.name,
+                status: task.student && task.student._id === app.student._id ? 'accepted' : 'pending',
+                appliedAt: app.appliedAt
+              });
+            });
+          }
+        });
+        setApplications(allApps);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -59,7 +88,7 @@ export default function ClientDashboard() {
     loadData();
   }, [isClient, navigate, loadData]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -72,29 +101,45 @@ export default function ClientDashboard() {
       return;
     }
 
-    const newTask = {
-      id: crypto.randomUUID(),
-      title,
-      description,
-      category,
-      price: parseFloat(price),
-      date,
-      time,
-      location: {
-        address,
-        city,
-        zipCode
-      },
-      duration: duration ? parseFloat(duration) : null,
-      clientId: user.id,
-      clientName: user.name,
-      status: 'open',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const newTask = {
+        title,
+        description,
+        category,
+        budget: parseFloat(price),
+        scheduledDate: date,
+        scheduledTime: time,
+        location: {
+          address,
+          city,
+          zipCode
+        },
+        estimatedDuration: duration ? parseFloat(duration) : null,
+        status: 'open'
+      };
 
-    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
-    storedTasks.push(newTask);
-    localStorage.setItem('FlexTasks_tasks', JSON.stringify(storedTasks));
+      const response = await fetch(`${backendUrl}/api/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newTask)
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.message || 'Failed to create task');
+        return;
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      setError('An error occurred while creating the task');
+      return;
+    }
 
     // Reset form
     setTitle('');
@@ -117,41 +162,41 @@ export default function ClientDashboard() {
   };
 
   const handleOpenChat = (task) => {
-    // Find the assigned student
-    const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
-    if (acceptedApp) {
-      const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-      const student = storedUsers.find(u => u.id === acceptedApp.studentId);
-      if (student) {
-        setChatTask(task);
-        setChatStudent(student);
-      } else {
-        alert('Unable to load student information. Please try again.');
-      }
+    // Find the assigned student from task data
+    if (task.student) {
+      setChatTask(task);
+      setChatStudent(task.student);
+    } else {
+      alert('No student has been assigned to this task yet.');
     }
   };
 
-  const handleCompleteTask = (task) => {
-    // Mark task as completed
-    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
-    const updatedTasks = storedTasks.map(t => {
-      if (t.id === task.id) {
-        return { ...t, status: 'completed' };
-      }
-      return t;
-    });
-    localStorage.setItem('FlexTasks_tasks', JSON.stringify(updatedTasks));
-    loadData();
+  const handleCompleteTask = async (task) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      // Mark task as completed
+      const response = await fetch(`${backendUrl}/api/tasks/${task._id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'completed' })
+      });
 
-    // Open rating modal
-    const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
-    if (acceptedApp) {
-      const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-      const student = storedUsers.find(u => u.id === acceptedApp.studentId);
-      if (student) {
-        setRatingTask(task);
-        setRatingStudent(student);
+      if (response.ok) {
+        loadData();
+
+        // Open rating modal
+        if (task.student) {
+          setRatingTask(task);
+          setRatingStudent(task.student);
+        }
       }
+    } catch (error) {
+      console.error('Error completing task:', error);
     }
   };
 
@@ -164,35 +209,30 @@ export default function ClientDashboard() {
     return applications.filter(a => a.taskId === taskId);
   };
 
-  const handleAcceptApplication = (applicationId, taskId) => {
-    const updatedApplications = applications.map(a => {
-      if (a.id === applicationId) {
-        return { ...a, status: 'accepted' };
-      }
-      if (a.taskId === taskId && a.id !== applicationId) {
-        return { ...a, status: 'rejected' };
-      }
-      return a;
-    });
-    
-    const allApplications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
-    const newApplications = allApplications.map(a => {
-      const updated = updatedApplications.find(u => u.id === a.id);
-      return updated || a;
-    });
-    localStorage.setItem('FlexTasks_applications', JSON.stringify(newApplications));
+  const handleAcceptApplication = async (applicationId, taskId) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const application = applications.find(a => a.id === applicationId);
+      if (!application) return;
+      
+      // Assign task to student
+      const response = await fetch(`${backendUrl}/api/tasks/${taskId}/assign`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ studentId: application.studentId })
+      });
 
-    // Update task status
-    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
-    const updatedTasks = storedTasks.map(t => {
-      if (t.id === taskId) {
-        return { ...t, status: 'assigned' };
+      if (response.ok) {
+        loadData();
       }
-      return t;
-    });
-    localStorage.setItem('FlexTasks_tasks', JSON.stringify(updatedTasks));
-    
-    loadData();
+    } catch (error) {
+      console.error('Error accepting application:', error);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -396,9 +436,9 @@ export default function ClientDashboard() {
           ) : (
             <div style={styles.tasksGrid}>
               {myTasks.map(task => {
-                const taskApplications = getApplicationsForTask(task.id);
+                const taskApplications = getApplicationsForTask(task._id);
                 return (
-                  <div key={task.id} style={styles.taskCard}>
+                  <div key={task._id} style={styles.taskCard}>
                     <div style={styles.taskHeader}>
                       <span style={styles.taskCategory}>
                         {TASK_CATEGORIES.find(c => c.id === task.category)?.icon || '📋'}{' '}
@@ -406,20 +446,23 @@ export default function ClientDashboard() {
                       </span>
                       <span style={{
                         ...styles.statusBadge,
-                        background: task.status === 'open' ? '#e8f5e9' : '#fff3e0',
-                        color: task.status === 'open' ? '#2e7d32' : '#f57c00',
+                        background: task.status === 'open' ? '#e8f5e9' : 
+                                   task.status === 'completed' ? '#e3f2fd' : '#fff3e0',
+                        color: task.status === 'open' ? '#2e7d32' : 
+                               task.status === 'completed' ? '#1565c0' : '#f57c00',
                       }}>
-                        {task.status === 'open' ? 'Open' : 'Assigned'}
+                        {task.status === 'open' ? 'Open' : 
+                         task.status === 'completed' ? 'Completed' : 'Assigned'}
                       </span>
                     </div>
                     <h3 style={styles.taskTitle}>{task.title}</h3>
                     <p style={styles.taskDescription}>{task.description}</p>
                     <div style={styles.taskDetails}>
-                      <span>💰 ${task.price}</span>
-                      {task.duration && <span>⏱️ {task.duration}h</span>}
+                      <span>💰 ${task.budget}</span>
+                      {task.estimatedDuration && <span>⏱️ {task.estimatedDuration}h</span>}
                       <span>📍 {formatLocation(task.location)}</span>
-                      <span>📅 {formatDate(task.date)}</span>
-                      <span>⏰ {task.time}</span>
+                      <span>📅 {formatDate(task.scheduledDate)}</span>
+                      <span>⏰ {task.scheduledTime}</span>
                     </div>
                     
                     {task.status === 'assigned' && (
@@ -436,6 +479,12 @@ export default function ClientDashboard() {
                         >
                           ✓ Mark as Complete
                         </button>
+                      </div>
+                    )}
+                    
+                    {task.status === 'completed' && (
+                      <div style={styles.completedBanner}>
+                        <span>✓ Task Completed</span>
                       </div>
                     )}
                     
@@ -459,7 +508,7 @@ export default function ClientDashboard() {
                             </div>
                             {app.status === 'pending' && task.status === 'open' ? (
                               <button
-                                onClick={() => handleAcceptApplication(app.id, task.id)}
+                                onClick={() => handleAcceptApplication(app.id, task._id)}
                                 style={styles.acceptBtn}
                               >
                                 Accept
@@ -872,5 +921,14 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '500',
     fontSize: '14px',
+  },
+  completedBanner: {
+    marginTop: '16px',
+    padding: '12px',
+    background: '#e3f2fd',
+    color: '#1565c0',
+    borderRadius: '8px',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 };

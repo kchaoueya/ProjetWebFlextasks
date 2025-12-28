@@ -9,7 +9,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -18,15 +18,40 @@ export default function Login() {
       return;
     }
 
-    // Simulated login - in production, this would call the backend API
-    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-    const user = storedUsers.find(u => u.email === email && u.password === password);
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (user) {
-      login({ id: user.id, name: user.name, email: user.email, role: user.role });
-      navigate(user.role === 'student' ? '/student-dashboard' : '/client-dashboard');
-    } else {
-      setError('Invalid email or password');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Login failed');
+        return;
+      }
+
+      // Store token
+      localStorage.setItem('token', data.token);
+
+      // Login user
+      login({ 
+        id: data._id, 
+        _id: data._id,
+        name: data.name, 
+        email: data.email, 
+        role: data.role,
+        token: data.token 
+      });
+      
+      navigate(data.role === 'student' ? '/student-dashboard' : '/client-dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login. Please try again.');
     }
   };
 

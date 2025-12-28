@@ -3,50 +3,65 @@ import PropTypes from 'prop-types';
 
 export default function UserProfile({ userId, onClose }) {
   const [user, setUser] = useState(null);
-  const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Load user data
-    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-    const foundUser = storedUsers.find(u => u.id === userId);
-    setUser(foundUser);
-
-    // Load ratings for this user
-    const storedRatings = JSON.parse(localStorage.getItem('FlexTasks_ratings') || '[]');
-    const userRatings = storedRatings.filter(r => r.ratedUserId === userId);
-    setRatings(userRatings);
+    const fetchUserProfile = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${backendUrl}/api/auth/profile/${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        } else {
+          setError('Failed to load user profile');
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        setError('An error occurred while loading the profile');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setLoading(false);
+    fetchUserProfile();
   }, [userId]);
 
   if (loading) {
     return (
-      <div style={styles.modal}>
-        <div style={styles.modalContent}>
-          <p>Loading...</p>
+      <div style={styles.modal} onClick={onClose}>
+        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <p style={styles.loadingText}>Loading profile...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
-      <div style={styles.modal}>
-        <div style={styles.modalContent}>
-          <p>User not found</p>
+      <div style={styles.modal} onClick={onClose}>
+        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <p style={styles.errorText}>{error || 'User not found'}</p>
           <button onClick={onClose} style={styles.closeButton}>Close</button>
         </div>
       </div>
     );
   }
 
+  const ratings = user.ratings || [];
+  const completedTasks = user.completedTasks || [];
+
   const calculateAverageRating = () => {
     if (ratings.length === 0) return 0;
-    const sum = ratings.reduce((acc, r) => {
-      const avg = (r.punctuality + r.professionalism + r.quality + r.communication) / 4;
-      return acc + avg;
-    }, 0);
+    const sum = ratings.reduce((acc, r) => acc + (r.rating || 0), 0);
     return (sum / ratings.length).toFixed(1);
   };
 
@@ -157,27 +172,64 @@ export default function UserProfile({ userId, onClose }) {
           )}
         </div>
 
+        {completedTasks.length > 0 && (
+          <div style={styles.tasksSection}>
+            <h3 style={styles.sectionTitle}>Completed Tasks ({completedTasks.length})</h3>
+            <div style={styles.tasksList}>
+              {completedTasks.map((task, index) => (
+                <div key={index} style={styles.taskCard}>
+                  <div style={styles.taskHeader}>
+                    <span style={styles.taskTitle}>{task.title}</span>
+                    <span style={styles.taskCategory}>{task.category}</span>
+                  </div>
+                  <p style={styles.taskWith}>
+                    {user.role === 'student' ? 
+                      `Client: ${task.client?.name || 'N/A'}` : 
+                      `Student: ${task.student?.name || 'N/A'}`
+                    }
+                  </p>
+                  {task.completedDate && (
+                    <span style={styles.taskDate}>
+                      Completed: {new Date(task.completedDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {ratings.length > 0 && (
           <div style={styles.reviewsSection}>
             <h3 style={styles.reviewsTitle}>Reviews</h3>
             <div style={styles.reviewsList}>
               {ratings.map((rating, index) => (
-                <div key={index} style={styles.reviewCard}>
+                <div key={rating._id || index} style={styles.reviewCard}>
                   <div style={styles.reviewHeader}>
-                    <span style={styles.reviewerName}>From: {rating.raterName || 'Anonymous'}</span>
+                    <div>
+                      <span style={styles.reviewerName}>From: {rating.ratedBy?.name || 'Anonymous'}</span>
+                      {rating.task && (
+                        <p style={styles.reviewTask}>Task: {rating.task.title}</p>
+                      )}
+                    </div>
                     <div style={styles.reviewStars}>
-                      {renderStars((rating.punctuality + rating.professionalism + rating.quality + rating.communication) / 4)}
+                      {renderStars(rating.rating || 0)}
                     </div>
                   </div>
                   {rating.comment && (
                     <p style={styles.reviewComment}>{rating.comment}</p>
                   )}
-                  <div style={styles.reviewMeta}>
-                    <span>⏱️ Punctuality: {rating.punctuality}</span>
-                    <span>👔 Professional: {rating.professionalism}</span>
-                    <span>✨ Quality: {rating.quality}</span>
-                    <span>💬 Communication: {rating.communication}</span>
-                  </div>
+                  {(rating.punctuality || rating.professionalism || rating.quality || rating.communication) && (
+                    <div style={styles.reviewMeta}>
+                      {rating.punctuality && <span>⏱️ Punctuality: {rating.punctuality}/5</span>}
+                      {rating.professionalism && <span>👔 Professional: {rating.professionalism}/5</span>}
+                      {rating.quality && <span>✨ Quality: {rating.quality}/5</span>}
+                      {rating.communication && <span>💬 Communication: {rating.communication}/5</span>}
+                    </div>
+                  )}
+                  <span style={styles.reviewDate}>
+                    {new Date(rating.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               ))}
             </div>
@@ -364,13 +416,18 @@ const styles = {
   reviewHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: '8px',
   },
   reviewerName: {
     fontSize: '14px',
     fontWeight: '500',
     color: '#333',
+  },
+  reviewTask: {
+    fontSize: '12px',
+    color: '#666',
+    margin: '4px 0 0 0',
   },
   reviewStars: {
     fontSize: '14px',
@@ -387,6 +444,68 @@ const styles = {
     fontSize: '12px',
     color: '#888',
     flexWrap: 'wrap',
+    marginBottom: '8px',
+  },
+  reviewDate: {
+    fontSize: '11px',
+    color: '#999',
+  },
+  tasksSection: {
+    marginBottom: '32px',
+  },
+  sectionTitle: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '16px',
+  },
+  tasksList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  taskCard: {
+    padding: '12px',
+    background: '#f9f9f9',
+    borderRadius: '8px',
+    border: '1px solid #eee',
+  },
+  taskHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  taskTitle: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#333',
+  },
+  taskCategory: {
+    fontSize: '11px',
+    padding: '4px 8px',
+    background: '#e0e0e0',
+    borderRadius: '4px',
+    color: '#666',
+  },
+  taskWith: {
+    fontSize: '13px',
+    color: '#666',
+    margin: '4px 0',
+  },
+  taskDate: {
+    fontSize: '11px',
+    color: '#999',
+  },
+  loadingText: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#666',
+  },
+  errorText: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#c33',
   },
   noReviews: {
     textAlign: 'center',

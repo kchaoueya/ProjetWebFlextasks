@@ -7,38 +7,67 @@ export default function ChatModal({ task, currentUser, otherUser, onClose }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    // Load messages for this task
-    const storedMessages = JSON.parse(localStorage.getItem('FlexTasks_messages') || '[]');
-    const taskMessages = storedMessages.filter(m => m.taskId === task.id);
-    setMessages(taskMessages);
-  }, [task.id]);
+    const fetchMessages = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${backendUrl}/api/messages/task/${task._id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const messagesData = await response.json();
+          setMessages(messagesData);
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    };
+    
+    fetchMessages();
+    
+    // Poll for new messages every 3 seconds
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [task._id]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    const message = {
-      id: crypto.randomUUID(),
-      taskId: task.id,
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      receiverId: otherUser.id,
-      content: newMessage.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save message to localStorage
-    const storedMessages = JSON.parse(localStorage.getItem('FlexTasks_messages') || '[]');
-    storedMessages.push(message);
-    localStorage.setItem('FlexTasks_messages', JSON.stringify(storedMessages));
-
-    setMessages([...messages, message]);
-    setNewMessage('');
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${backendUrl}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          task: task._id,
+          receiver: otherUser._id || otherUser.id,
+          content: newMessage.trim()
+        })
+      });
+      
+      if (response.ok) {
+        const message = await response.json();
+        setMessages([...messages, message]);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const formatTime = (dateString) => {
@@ -82,10 +111,10 @@ export default function ChatModal({ task, currentUser, otherUser, onClose }) {
               {messages.map((msg, index) => {
                 const showDate = index === 0 || 
                   formatDate(messages[index - 1].createdAt) !== formatDate(msg.createdAt);
-                const isCurrentUser = msg.senderId === currentUser.id;
+                const isCurrentUser = (msg.sender._id || msg.sender) === (currentUser._id || currentUser.id);
 
                 return (
-                  <div key={msg.id}>
+                  <div key={msg._id || msg.id}>
                     {showDate && (
                       <div style={styles.dateLabel}>
                         {formatDate(msg.createdAt)}

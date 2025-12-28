@@ -14,7 +14,7 @@ const taskSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['cleaning', 'dog-walking', 'tutoring', 'delivery', 'gardening', 'moving', 'handyman', 'other']
+    enum: ['cleaning', 'cooking', 'dog-walking', 'babysitting', 'gardening', 'tutoring', 'errands', 'other']
   },
   client: {
     type: mongoose.Schema.Types.ObjectId,

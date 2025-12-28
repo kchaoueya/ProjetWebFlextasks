@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UserProfile from '../components/UserProfile';
 import ChatModal from '../components/ChatModal';
+import RatingModal from '../components/RatingModal';
 
 const TASK_CATEGORIES = [
   { id: 'all', name: 'All Tasks', icon: '📋' },
@@ -26,36 +27,126 @@ export default function StudentDashboard() {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [chatTask, setChatTask] = useState(null);
   const [chatClient, setChatClient] = useState(null);
+  const [ratingTask, setRatingTask] = useState(null);
+  const [ratingClient, setRatingClient] = useState(null);
 
   useEffect(() => {
     if (!isStudent) {
       navigate('/login');
       return;
     }
-    // Load tasks from localStorage
-    const storedTasks = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]');
-    setTasks(storedTasks.filter(t => t.status === 'open'));
     
-    // Load applied tasks
-    const applied = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
-    const myApps = applied.filter(a => a.studentId === user?.id);
-    setMyApplications(myApps);
-    setAppliedTasks(myApps.map(a => a.taskId));
+    const fetchTasks = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const token = localStorage.getItem('token');
+        
+        // Load all open tasks
+        const tasksResponse = await fetch(`${backendUrl}/api/tasks?status=open`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (tasksResponse.ok) {
+          const allTasks = await tasksResponse.json();
+          setTasks(allTasks);
+          
+          // Build applications from all tasks
+          const apps = [];
+          const appliedTaskIds = [];
+          
+          allTasks.forEach(task => {
+            if (task.applicants) {
+              const myApp = task.applicants.find(app => 
+                (app.student._id || app.student) === user?.id
+              );
+              if (myApp) {
+                appliedTaskIds.push(task._id);
+                apps.push({
+                  id: myApp._id,
+                  taskId: task._id,
+                  studentId: user?.id,
+                  studentName: user?.name,
+                  status: task.student && (task.student._id || task.student) === user?.id ? 'accepted' : 'pending',
+                  appliedAt: myApp.appliedAt
+                });
+              }
+            }
+          });
+          
+          setAppliedTasks(appliedTaskIds);
+          
+          // Load assigned and completed tasks for this student
+          const assignedResponse = await fetch(`${backendUrl}/api/tasks?studentId=${user?.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (assignedResponse.ok) {
+            const assignedTasks = await assignedResponse.json();
+            
+            // Add applications from assigned/completed tasks
+            assignedTasks.forEach(task => {
+              // Skip if already added from open tasks
+              if (!apps.find(a => a.taskId === task._id)) {
+                apps.push({
+                  id: task._id,
+                  taskId: task._id,
+                  studentId: user?.id,
+                  studentName: user?.name,
+                  status: 'accepted',
+                  appliedAt: task.createdAt
+                });
+                appliedTaskIds.push(task._id);
+              }
+            });
+            
+            // Merge assigned/completed tasks into tasks list for display
+            setTasks(prevTasks => {
+              const taskIds = new Set(prevTasks.map(t => t._id));
+              const newTasks = assignedTasks.filter(t => !taskIds.has(t._id));
+              return [...prevTasks, ...newTasks];
+            });
+          }
+          
+          setMyApplications(apps);
+        }
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+      }
+    };
+    
+    fetchTasks();
   }, [isStudent, navigate, user?.id]);
 
-  const handleApply = (taskId) => {
-    const applications = JSON.parse(localStorage.getItem('FlexTasks_applications') || '[]');
-    const newApplication = {
-      id: crypto.randomUUID(),
-      taskId,
-      studentId: user.id,
-      studentName: user.name,
-      appliedAt: new Date().toISOString(),
-      status: 'pending',
-    };
-    applications.push(newApplication);
-    localStorage.setItem('FlexTasks_applications', JSON.stringify(applications));
-    setAppliedTasks([...appliedTasks, taskId]);
+  const handleApply = async (taskId) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${backendUrl}/api/tasks/${taskId}/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: 'I am interested in this task' })
+      });
+      
+      if (response.ok) {
+        setAppliedTasks([...appliedTasks, taskId]);
+        // Reload to get updated applications
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to apply for task');
+      }
+    } catch (error) {
+      console.error('Error applying for task:', error);
+      alert('An error occurred while applying for the task');
+    }
   };
 
   const handleLogout = () => {
@@ -64,15 +155,49 @@ export default function StudentDashboard() {
   };
 
   const handleOpenChat = (task) => {
-    // Find the client
-    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-    const client = storedUsers.find(u => u.id === task.clientId);
-    if (client) {
+    // Use client info from populated task
+    if (task.client) {
       setChatTask(task);
-      setChatClient(client);
+      setChatClient(task.client);
     } else {
       alert('Unable to load client information. Please try again.');
     }
+  };
+
+  const handleCompleteTask = async (task) => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      // Mark task as completed
+      const response = await fetch(`${backendUrl}/api/tasks/${task._id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'completed' })
+      });
+
+      if (response.ok) {
+        // Reload tasks
+        window.location.reload();
+
+        // Open rating modal for client
+        if (task.client) {
+          setRatingTask(task);
+          setRatingClient(task.client);
+        }
+      }
+    } catch (error) {
+      console.error('Error completing task:', error);
+    }
+  };
+
+  const handleRatingSubmit = () => {
+    setRatingTask(null);
+    setRatingClient(null);
+    window.location.reload();
   };
 
   const filteredTasks = selectedCategory === 'all' 
@@ -122,8 +247,7 @@ export default function StudentDashboard() {
             <h2 style={styles.sectionTitle}>My Applications ({myApplications.length})</h2>
             <div style={styles.applicationsGrid}>
               {myApplications.map(app => {
-                const task = JSON.parse(localStorage.getItem('FlexTasks_tasks') || '[]')
-                  .find(t => t.id === app.taskId);
+                const task = tasks.find(t => t._id === app.taskId);
                 if (!task) return null;
                 
                 return (
@@ -147,17 +271,28 @@ export default function StudentDashboard() {
                     <h3 style={styles.appTaskTitle}>{task.title}</h3>
                     <p style={styles.appTaskDesc}>{task.description.substring(0, 100)}...</p>
                     <div style={styles.appDetails}>
-                      <span>💰 ${task.price}</span>
-                      <span>📅 {formatDate(task.date)}</span>
-                      <span>⏰ {task.time}</span>
+                      <span>💰 ${task.budget}</span>
+                      <span>📅 {formatDate(task.scheduledDate)}</span>
+                      <span>⏰ {task.scheduledTime}</span>
                     </div>
-                    {app.status === 'accepted' && (
-                      <button 
-                        onClick={() => handleOpenChat(task)} 
-                        style={styles.chatBtn}
-                      >
-                        💬 Chat with Client
-                      </button>
+                    {app.status === 'accepted' && task.status !== 'completed' && (
+                      <div style={styles.taskActions}>
+                        <button 
+                          onClick={() => handleOpenChat(task)} 
+                          style={styles.chatBtn}
+                        >
+                          💬 Chat with Client
+                        </button>
+                        <button 
+                          onClick={() => handleCompleteTask(task)} 
+                          style={styles.completeBtn}
+                        >
+                          ✓ Mark as Complete
+                        </button>
+                      </div>
+                    )}
+                    {task.status === 'completed' && (
+                      <span style={styles.completedBadge}>✓ Completed</span>
                     )}
                   </div>
                 );
@@ -191,34 +326,34 @@ export default function StudentDashboard() {
             </div>
           ) : (
             filteredTasks.map(task => (
-              <div key={task.id} style={styles.taskCard}>
+              <div key={task._id} style={styles.taskCard}>
                 <div style={styles.taskHeader}>
                   <span style={styles.taskCategory}>
                     {TASK_CATEGORIES.find(c => c.id === task.category)?.icon || '📋'}{' '}
                     {TASK_CATEGORIES.find(c => c.id === task.category)?.name || task.category}
                   </span>
-                  <span style={styles.taskPrice}>${task.price}</span>
+                  <span style={styles.taskPrice}>${task.budget}</span>
                 </div>
                 <h3 style={styles.taskTitle}>{task.title}</h3>
                 <p style={styles.taskDescription}>{task.description}</p>
                 <div style={styles.taskDetails}>
                   <span>📍 {formatLocation(task.location)}</span>
-                  {task.duration && <span>⏱️ {task.duration}h</span>}
-                  <span>📅 {formatDate(task.date)}</span>
-                  <span>⏰ {task.time}</span>
+                  {task.estimatedDuration && <span>⏱️ {task.estimatedDuration}h</span>}
+                  <span>📅 {formatDate(task.scheduledDate)}</span>
+                  <span>⏰ {task.scheduledTime}</span>
                 </div>
                 <div style={styles.taskFooter}>
                   <span 
                     style={styles.clientName}
-                    onClick={() => setSelectedUserId(task.clientId)}
+                    onClick={() => setSelectedUserId(task.client?._id || task.client)}
                   >
-                    Posted by {task.clientName}
+                    Posted by {task.client?.name || 'Client'}
                   </span>
-                  {appliedTasks.includes(task.id) ? (
+                  {appliedTasks.includes(task._id) ? (
                     <span style={styles.appliedBadge}>✓ Applied</span>
                   ) : (
                     <button
-                      onClick={() => handleApply(task.id)}
+                      onClick={() => handleApply(task._id)}
                       style={styles.applyBtn}
                     >
                       Apply Now
@@ -248,6 +383,20 @@ export default function StudentDashboard() {
           onClose={() => {
             setChatTask(null);
             setChatClient(null);
+          }}
+        />
+      )}
+
+      {/* Rating Modal */}
+      {ratingTask && ratingClient && (
+        <RatingModal 
+          task={ratingTask}
+          ratedUser={ratingClient}
+          ratedBy={user}
+          onSubmit={handleRatingSubmit}
+          onClose={() => {
+            setRatingTask(null);
+            setRatingClient(null);
           }}
         />
       )}
@@ -500,8 +649,13 @@ const styles = {
     color: '#888',
     marginBottom: '16px',
   },
+  taskActions: {
+    display: 'flex',
+    gap: '12px',
+    marginTop: '12px',
+  },
   chatBtn: {
-    width: '100%',
+    flex: 1,
     background: '#2e7d32',
     color: 'white',
     padding: '12px',
@@ -510,5 +664,26 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '500',
     fontSize: '14px',
+  },
+  completeBtn: {
+    flex: 1,
+    background: '#d7747e',
+    color: 'white',
+    padding: '12px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '14px',
+  },
+  completedBadge: {
+    display: 'block',
+    textAlign: 'center',
+    padding: '10px',
+    marginTop: '12px',
+    background: '#e8f5e9',
+    color: '#2e7d32',
+    borderRadius: '8px',
+    fontWeight: '500',
   },
 };

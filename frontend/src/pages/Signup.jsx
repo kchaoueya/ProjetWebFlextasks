@@ -12,7 +12,7 @@ export default function Signup() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -31,30 +31,46 @@ export default function Signup() {
       return;
     }
 
-    // Simulated signup - in production, this would call the backend API
-    const storedUsers = JSON.parse(localStorage.getItem('FlexTasks_users') || '[]');
-    
-    if (storedUsers.some(u => u.email === email)) {
-      setError('An account with this email already exists');
-      return;
+    try {
+      // Call the backend API to register the user
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Registration failed');
+        return;
+      }
+
+      // Auto-login after successful signup
+      login({ 
+        id: data._id, 
+        name: data.name, 
+        email: data.email, 
+        role: data.role,
+        token: data.token 
+      });
+      
+      // Store token in localStorage
+      localStorage.setItem('token', data.token);
+      
+      navigate(role === 'student' ? '/student-dashboard' : '/client-dashboard');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('An error occurred during registration. Please try again.');
     }
-
-    // Note: In production, password hashing and authentication should be handled server-side
-    const newUser = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      password,
-      role,
-      createdAt: new Date().toISOString(),
-    };
-
-    storedUsers.push(newUser);
-    localStorage.setItem('FlexTasks_users', JSON.stringify(storedUsers));
-
-    // Auto-login after signup
-    login({ id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role });
-    navigate(role === 'student' ? '/student-dashboard' : '/client-dashboard');
   };
 
   const handleGoogleSignup = () => {
