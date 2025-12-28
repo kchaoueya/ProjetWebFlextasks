@@ -1,6 +1,7 @@
 import NavBar from '../components/NavBar';
 import Hero from '../components/Hero';
 import HowItWorks from '../components/HowItWorks';
+import Footer from '../components/Footer';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -23,6 +24,7 @@ export default function Home() {
       <NavBar />
       <Hero />
       <HowItWorks />
+      <Footer />
     </>
   );
 }

@@ -1,8 +1,29 @@
 import express from 'express';
 import User from '../models/User.js';
 import { generateToken } from '../middleware/auth.js';
+import passport from '../config/passport.js';
 
 const router = express.Router();
+
+// Google OAuth routes
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
+  (req, res) => {
+    // Generate token
+    const token = generateToken(req.user._id, req.user.role);
+    
+    // Redirect to frontend with token and user info
+    res.redirect(
+      `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}&userId=${req.user._id}&role=${req.user.role}&name=${encodeURIComponent(req.user.name)}&email=${encodeURIComponent(req.user.email)}`
+    );
+  }
+);
 
 // Register new user
 router.post('/register', async (req, res) => {

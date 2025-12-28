@@ -29,16 +29,25 @@ const ratingSchema = new mongoose.Schema({
   // Rating categories
   punctuality: {
     type: Number,
+    required: [true, 'Please rate punctuality'],
+    min: 1,
+    max: 5
+  },
+  professionalism: {
+    type: Number,
+    required: [true, 'Please rate professionalism'],
     min: 1,
     max: 5
   },
   quality: {
     type: Number,
+    required: [true, 'Please rate quality of work'],
     min: 1,
     max: 5
   },
   communication: {
     type: Number,
+    required: [true, 'Please rate communication'],
     min: 1,
     max: 5
   }
@@ -51,6 +60,13 @@ ratingSchema.index({ task: 1, ratedBy: 1 }, { unique: true });
 // Index for user profile queries
 ratingSchema.index({ ratedUser: 1 });
 
+// Calculate overall rating before saving
+ratingSchema.pre('save', function(next) {
+  // Calculate average of all category ratings
+  this.rating = (this.punctuality + this.professionalism + this.quality + this.communication) / 4;
+  next();
+});
+
 // Update user's average rating after saving
 ratingSchema.post('save', async function() {
   const Rating = mongoose.model('Rating');
@@ -58,7 +74,14 @@ ratingSchema.post('save', async function() {
   
   // Calculate new average rating for the rated user
   const ratings = await Rating.find({ ratedUser: this.ratedUser });
-  const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+  
+  // Calculate overall average from all categories
+  let totalRating = 0;
+  ratings.forEach(r => {
+    const categoryAvg = (r.punctuality + r.professionalism + r.quality + r.communication) / 4;
+    totalRating += categoryAvg;
+  });
+  const avgRating = totalRating / ratings.length;
   
   await User.findByIdAndUpdate(this.ratedUser, {
     averageRating: avgRating,

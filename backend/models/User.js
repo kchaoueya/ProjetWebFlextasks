@@ -16,9 +16,16 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
+    required: function() {
+      return !this.googleId; // Password not required if using Google OAuth
+    },
     minlength: 6,
     select: false
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true // Allow null values but ensure uniqueness when present
   },
   role: {
     type: String,
@@ -58,6 +65,15 @@ const userSchema = new mongoose.Schema({
     max: 5
   },
   totalRatings: {
+    type: Number,
+    default: 0
+  },
+  // Client-specific fields
+  totalTasksPosted: {
+    type: Number,
+    default: 0
+  },
+  totalTasksCompleted: {
     type: Number,
     default: 0
   },

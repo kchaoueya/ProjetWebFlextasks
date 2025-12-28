@@ -32,7 +32,10 @@ const taskSchema = new mongoose.Schema({
     default: 'open'
   },
   location: {
-    address: String,
+    address: {
+      type: String,
+      required: [true, 'Please provide a location address']
+    },
     city: String,
     zipCode: String
   },
@@ -46,7 +49,12 @@ const taskSchema = new mongoose.Schema({
     min: 0
   },
   scheduledDate: {
-    type: Date
+    type: Date,
+    required: [true, 'Please provide a scheduled date']
+  },
+  scheduledTime: {
+    type: String,
+    required: [true, 'Please provide a scheduled time']
   },
   completedDate: {
     type: Date
