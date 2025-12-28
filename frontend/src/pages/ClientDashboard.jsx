@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UserProfile from '../components/UserProfile';
+import ChatModal from '../components/ChatModal';
+import RatingModal from '../components/RatingModal';
 
 const TASK_CATEGORIES = [
   { id: 'cleaning', name: 'Cleaning', icon: '🧹' },
@@ -21,6 +23,10 @@ export default function ClientDashboard() {
   const [myTasks, setMyTasks] = useState([]);
   const [applications, setApplications] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [chatTask, setChatTask] = useState(null);
+  const [chatStudent, setChatStudent] = useState(null);
+  const [ratingTask, setRatingTask] = useState(null);
+  const [ratingStudent, setRatingStudent] = useState(null);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -104,6 +110,48 @@ export default function ClientDashboard() {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleOpenChat = (task) => {
+    // Find the assigned student
+    const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
+    if (acceptedApp) {
+      const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+      const student = storedUsers.find(u => u.id === acceptedApp.studentId);
+      if (student) {
+        setChatTask(task);
+        setChatStudent(student);
+      }
+    }
+  };
+
+  const handleCompleteTask = (task) => {
+    // Mark task as completed
+    const storedTasks = JSON.parse(localStorage.getItem('flextasks_tasks') || '[]');
+    const updatedTasks = storedTasks.map(t => {
+      if (t.id === task.id) {
+        return { ...t, status: 'completed' };
+      }
+      return t;
+    });
+    localStorage.setItem('flextasks_tasks', JSON.stringify(updatedTasks));
+    loadData();
+
+    // Open rating modal
+    const acceptedApp = applications.find(a => a.taskId === task.id && a.status === 'accepted');
+    if (acceptedApp) {
+      const storedUsers = JSON.parse(localStorage.getItem('flextasks_users') || '[]');
+      const student = storedUsers.find(u => u.id === acceptedApp.studentId);
+      if (student) {
+        setRatingTask(task);
+        setRatingStudent(student);
+      }
+    }
+  };
+
+  const handleRatingSubmit = () => {
+    setRatingTask(null);
+    setRatingStudent(null);
   };
 
   const getApplicationsForTask = (taskId) => {
@@ -358,6 +406,23 @@ export default function ClientDashboard() {
                       <span>⏰ {task.time}</span>
                     </div>
                     
+                    {task.status === 'assigned' && (
+                      <div style={styles.taskActions}>
+                        <button 
+                          onClick={() => handleOpenChat(task)} 
+                          style={styles.chatButton}
+                        >
+                          💬 Chat with Student
+                        </button>
+                        <button 
+                          onClick={() => handleCompleteTask(task)} 
+                          style={styles.completeButton}
+                        >
+                          ✓ Mark as Complete
+                        </button>
+                      </div>
+                    )}
+                    
                     {taskApplications.length > 0 && (
                       <div style={styles.applicationsSection}>
                         <h4 style={styles.applicationsTitle}>
@@ -408,6 +473,33 @@ export default function ClientDashboard() {
         <UserProfile 
           userId={selectedUserId} 
           onClose={() => setSelectedUserId(null)} 
+        />
+      )}
+
+      {/* Chat Modal */}
+      {chatTask && chatStudent && (
+        <ChatModal 
+          task={chatTask}
+          currentUser={user}
+          otherUser={chatStudent}
+          onClose={() => {
+            setChatTask(null);
+            setChatStudent(null);
+          }}
+        />
+      )}
+
+      {/* Rating Modal */}
+      {ratingTask && ratingStudent && (
+        <RatingModal 
+          task={ratingTask}
+          ratedUser={ratingStudent}
+          ratedBy={user}
+          onSubmit={handleRatingSubmit}
+          onClose={() => {
+            setRatingTask(null);
+            setRatingStudent(null);
+          }}
         />
       )}
     </div>
@@ -737,5 +829,32 @@ const styles = {
   },
   emptyText: {
     color: '#666',
+  },
+  taskActions: {
+    display: 'flex',
+    gap: '12px',
+    marginBottom: '16px',
+  },
+  chatButton: {
+    flex: 1,
+    background: '#2e7d32',
+    color: 'white',
+    padding: '12px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '14px',
+  },
+  completeButton: {
+    flex: 1,
+    background: '#1976d2',
+    color: 'white',
+    padding: '12px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '14px',
   },
 };
