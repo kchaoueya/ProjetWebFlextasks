@@ -103,6 +103,8 @@ const styles ={
     menuLink: {
         textDecoration: "none",
         color: "#444",
+        transition: "color 0.2s",
+        cursor: "pointer",
     },
     right: {
         display: "flex", 
@@ -127,6 +129,7 @@ const styles ={
     border: "none",
     fontSize: "16px",
     cursor: "pointer",
+    transition: "color 0.2s",
   },
   signup: {
     background: "#d7747e",
@@ -135,5 +138,6 @@ const styles ={
     color: "white",
     border: "none",
     cursor: "pointer",
+    transition: "background 0.2s",
   },
 }

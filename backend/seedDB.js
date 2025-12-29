@@ -9,7 +9,7 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/users');
+    await mongoose.connect( 'mongodb://localhost:27017/FlexTasks');
     console.log('MongoDB Connected for seeding...');
   } catch (error) {
     console.error('Connection error:', error.message);
@@ -27,6 +27,18 @@ const seedDatabase = async () => {
     console.log('Cleared existing data');
 
     // Create sample users
+    const client3 = await User.create({
+      name: 'eya',
+      email: 'eya@example.com',
+      password: 'password123',
+      role: 'client',
+      phone: '+1234565555',
+      bio: 'Looking for help with household tasks',
+      profileImage: 'https://via.placeholder.com/150',
+      isActive: true,
+      isVerified: true
+    });
+    console.log('Created client:', client3.name);
     const client1 = await User.create({
       name: 'John Doe',
       email: 'john@example.com',

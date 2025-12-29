@@ -2,6 +2,7 @@
     width: "100%" ;
     padding: "80px 20px";
     background: "#f9f9f9";
+    animation: fadeIn 1s ease-out;
 }
 .container{
      /*maxWidth: "1200px";*/
@@ -35,6 +36,12 @@
   min-width: 300px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #eee;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 .cardTitle{
     font-size: 28px;
@@ -74,4 +81,15 @@
     font-size: 16px;
   color: #666;
   line-height: 1.5;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer style={styles.footer}>
+    <footer id="contact" style={styles.footer}>
       <div style={styles.container}>
         <div style={styles.grid}>
           <div style={styles.column}>

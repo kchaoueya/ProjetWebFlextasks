@@ -22,6 +22,7 @@ export default function ClientDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [myTasks, setMyTasks] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [students, setStudents] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [chatTask, setChatTask] = useState(null);
   const [chatStudent, setChatStudent] = useState(null);
@@ -45,18 +46,18 @@ export default function ClientDashboard() {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
-      
+
       // Load tasks posted by this client
       const tasksResponse = await fetch(`${backendUrl}/api/tasks?clientId=${user?.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (tasksResponse.ok) {
         const tasks = await tasksResponse.json();
         setMyTasks(tasks);
-        
+
         // Extract applications from tasks
         const allApps = [];
         tasks.forEach(task => {
@@ -75,8 +76,15 @@ export default function ClientDashboard() {
         });
         setApplications(allApps);
       }
+
+      // Load available students
+      const studentsResponse = await fetch(`${backendUrl}/api/auth/students`);
+      if (studentsResponse.ok) {
+        const studentsData = await studentsResponse.json();
+        setStudents(studentsData);
+      }
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.error('Error loading data:', error);
     }
   }, [user?.id]);
 
@@ -426,7 +434,7 @@ export default function ClientDashboard() {
         {/* My Tasks */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Your Posted Tasks ({myTasks.length})</h2>
-          
+
           {myTasks.length === 0 ? (
             <div style={styles.emptyState}>
               <span style={styles.emptyIcon}>📝</span>
@@ -446,12 +454,12 @@ export default function ClientDashboard() {
                       </span>
                       <span style={{
                         ...styles.statusBadge,
-                        background: task.status === 'open' ? '#e8f5e9' : 
+                        background: task.status === 'open' ? '#e8f5e9' :
                                    task.status === 'completed' ? '#e3f2fd' : '#fff3e0',
-                        color: task.status === 'open' ? '#2e7d32' : 
+                        color: task.status === 'open' ? '#2e7d32' :
                                task.status === 'completed' ? '#1565c0' : '#f57c00',
                       }}>
-                        {task.status === 'open' ? 'Open' : 
+                        {task.status === 'open' ? 'Open' :
                          task.status === 'completed' ? 'Completed' : 'Assigned'}
                       </span>
                     </div>
@@ -464,30 +472,30 @@ export default function ClientDashboard() {
                       <span>📅 {formatDate(task.scheduledDate)}</span>
                       <span>⏰ {task.scheduledTime}</span>
                     </div>
-                    
+
                     {task.status === 'assigned' && (
                       <div style={styles.taskActions}>
-                        <button 
-                          onClick={() => handleOpenChat(task)} 
+                        <button
+                          onClick={() => handleOpenChat(task)}
                           style={styles.chatButton}
                         >
                           💬 Chat with Student
                         </button>
-                        <button 
-                          onClick={() => handleCompleteTask(task)} 
+                        <button
+                          onClick={() => handleCompleteTask(task)}
                           style={styles.completeButton}
                         >
                           ✓ Mark as Complete
                         </button>
                       </div>
                     )}
-                    
+
                     {task.status === 'completed' && (
                       <div style={styles.completedBanner}>
                         <span>✓ Task Completed</span>
                       </div>
                     )}
-                    
+
                     {taskApplications.length > 0 && (
                       <div style={styles.applicationsSection}>
                         <h4 style={styles.applicationsTitle}>
@@ -496,7 +504,7 @@ export default function ClientDashboard() {
                         {taskApplications.map(app => (
                           <div key={app.id} style={styles.applicationCard}>
                             <div style={styles.applicationInfo}>
-                              <span 
+                              <span
                                 style={styles.applicantName}
                                 onClick={() => setSelectedUserId(app.studentId)}
                               >
@@ -528,6 +536,52 @@ export default function ClientDashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        {/* Browse Students */}
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Available Students ({students.length})</h2>
+          <p style={styles.browseSubtitle}>Browse skilled students to match with your tasks</p>
+
+          {students.length === 0 ? (
+            <div style={styles.emptyState}>
+              <span style={styles.emptyIcon}>🎓</span>
+              <h3 style={styles.emptyTitle}>No students available</h3>
+              <p style={styles.emptyText}>Check back later for available students!</p>
+            </div>
+          ) : (
+            <div style={styles.studentsGrid}>
+              {students.slice(0, 8).map(student => (
+                <div key={student._id} style={styles.studentCard}>
+                  <div style={styles.studentAvatar}>
+                    {student.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                  <h3 style={styles.studentName}>{student.name}</h3>
+                  <div style={styles.studentRating}>
+                    <span style={styles.star}>★</span>
+                    <span>{student.averageRating?.toFixed(1) || '0.0'}</span>
+                    <span style={styles.reviews}>({student.totalRatings || 0})</span>
+                  </div>
+                  {student.skills && student.skills.length > 0 && (
+                    <div style={styles.studentSkills}>
+                      {student.skills.slice(0, 2).map(skill => (
+                        <span key={skill} style={styles.skillTag}>{skill}</span>
+                      ))}
+                    </div>
+                  )}
+                  {student.hourlyRate && (
+                    <p style={styles.studentRate}>${student.hourlyRate}/hr</p>
+                  )}
+                  <button
+                    onClick={() => setSelectedUserId(student._id)}
+                    style={styles.viewStudentBtn}
+                  >
+                    View Profile
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </section>
@@ -930,5 +984,87 @@ const styles = {
     borderRadius: '8px',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  browseSubtitle: {
+    fontSize: '16px',
+    color: '#666',
+    marginBottom: '24px',
+  },
+  studentsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+    gap: '20px',
+  },
+  studentCard: {
+    background: 'white',
+    borderRadius: '12px',
+    padding: '20px',
+    textAlign: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    border: '1px solid #eee',
+  },
+  studentAvatar: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    background: '#d7747e',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    fontWeight: '700',
+    margin: '0 auto 12px',
+  },
+  studentName: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '8px',
+  },
+  studentRating: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    marginBottom: '12px',
+  },
+  star: {
+    color: '#ffc107',
+  },
+  reviews: {
+    color: '#666',
+    fontSize: '12px',
+  },
+  studentSkills: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '6px',
+    flexWrap: 'wrap',
+    marginBottom: '8px',
+  },
+  skillTag: {
+    background: '#e3f2fd',
+    color: '#1565c0',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '11px',
+    fontWeight: '500',
+  },
+  studentRate: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#d7747e',
+    marginBottom: '12px',
+  },
+  viewStudentBtn: {
+    background: '#d7747e',
+    color: 'white',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '500',
+    fontSize: '12px',
   },
 };

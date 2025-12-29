@@ -30,10 +30,12 @@ router.get(
 // Register new user
 router.post('/register', async (req, res) => {
   try {
+    console.log('Registration attempt:', req.body);
     const { name, email, password, role, phone, bio, skills, hourlyRate } = req.body;
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
+    console.log('User exists check:', !!userExists);
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -54,7 +56,9 @@ router.post('/register', async (req, res) => {
       userData.hourlyRate = hourlyRate;
     }
 
+    console.log('Creating user with data:', userData);
     const user = await User.create(userData);
+    console.log('User created:', user ? user._id : 'failed');
 
     if (user) {
       res.status(201).json({
@@ -66,6 +70,7 @@ router.post('/register', async (req, res) => {
       });
     }
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -107,7 +112,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -115,18 +120,18 @@ router.get('/profile/:id', async (req, res) => {
     // Get completed tasks
     let completedTasks = [];
     if (user.role === 'student') {
-      completedTasks = await Task.find({ 
-        student: req.params.id, 
-        status: 'completed' 
+      completedTasks = await Task.find({
+        student: req.params.id,
+        status: 'completed'
       })
         .populate('client', 'name')
         .select('title category completedDate')
         .sort({ completedDate: -1 })
         .limit(10);
     } else if (user.role === 'client') {
-      completedTasks = await Task.find({ 
-        client: req.params.id, 
-        status: 'completed' 
+      completedTasks = await Task.find({
+        client: req.params.id,
+        status: 'completed'
       })
         .populate('student', 'name')
         .select('title category completedDate')
@@ -146,6 +151,19 @@ router.get('/profile/:id', async (req, res) => {
       completedTasks,
       ratings
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all students
+router.get('/students', async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student', isActive: true })
+      .select('-password')
+      .sort({ averageRating: -1, totalRatings: -1 });
+
+    res.json(students);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
